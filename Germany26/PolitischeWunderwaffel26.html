@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributeded loaded dice</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #2a2a3a;
+    --accent: #e8c547;
+    --accent2: #4fc4a0;
+    --danger: #e05555;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    color: var(--accent2);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-bottom: 4px;
+    margin-top: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  select option {
+    background: var(--surface);
+  }
+
+  .candidate-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .candidate-row input.name-input {
+    flex: 3;
+    min-width: 0;
+  }
+
+  .candidate-row input.pct-input {
+    flex: 1.2;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 0.78rem;
+  }
+
+  .bucket-display {
+    flex: 0.9;
+    min-width: 0;
+    color: var(--accent2);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  .candidate-row input.ballot-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 0.78rem;
+  }
+
+  .candidate-row button {
+    background: none;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    width: 32px;
+    height: 36px;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .col-heads {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .col-heads span {
+    color: var(--muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.2s, color 0.2s;
+    margin-top: 8px;
+  }
+
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-secondary {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    font-size: 0.75rem;
+  }
+
+  .btn-secondary:hover {
+    background: var(--accent2);
+    color: var(--bg);
+  }
+
+  .add-btn {
+    border-color: var(--border);
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+
+  .add-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  #result {
+    display: none;
+  }
+
+  .error-box {
+    display: none;
+    border: 1px solid var(--danger);
+    background: rgba(224,85,85,0.08);
+    color: var(--danger);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    margin-top: 12px;
+    line-height: 1.7;
+  }
+
+  .winner-box {
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .winner-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(232,197,71,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .winner-label {
+    color: var(--muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .winner-name {
+    color: var(--accent);
+    font-size: 1.6rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    word-break: break-word;
+  }
+
+  .winner-hash {
+    color: var(--muted);
+    font-size: 0.62rem;
+    margin-top: 10px;
+    word-break: break-all;
+    letter-spacing: 0.03em;
+  }
+
+  .fingerprint-box {
+    border: 1px solid var(--accent2);
+    border-radius: 4px;
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+    background: rgba(79,196,160,0.05);
+  }
+
+  .fingerprint-label {
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .fingerprint-value {
+    color: var(--accent2);
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 0.25em;
+  }
+
+  .fingerprint-note {
+    color: var(--muted);
+    font-size: 0.65rem;
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+
+  .ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+
+  .ranking-table th {
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ranking-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(42,42,58,0.5);
+    vertical-align: middle;
+  }
+
+  .ranking-table tr.winner td {
+    color: var(--accent);
+  }
+
+  .rank-num {
+    color: var(--muted);
+    font-size: 0.7rem;
+    width: 24px;
+  }
+
+  .hash-val {
+    color: var(--muted);
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    word-break: break-all;
+  }
+
+  .bar-wrap {
+    background: var(--border);
+    border-radius: 2px;
+    height: 4px;
+    width: 80px;
+    margin-top: 3px;
+  }
+
+  .bar-fill {
+    background: var(--accent2);
+    border-radius: 2px;
+    height: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .winner .bar-fill {
+    background: var(--accent);
+  }
+
+  .algo-info {
+    background: rgba(79,196,160,0.05);
+    border: 1px solid rgba(79,196,160,0.2);
+    border-radius: 3px;
+    padding: 12px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+    line-height: 1.8;
+  }
+
+  .algo-info code {
+    color: var(--accent2);
+    font-size: 0.7rem;
+    word-break: break-all;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .tag {
+    display: inline-block;
+    background: rgba(232,197,71,0.1);
+    border: 1px solid rgba(232,197,71,0.3);
+    color: var(--accent);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .disclaimer {
+    color: var(--muted);
+    font-size: 0.65rem;
+    line-height: 1.7;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 400px) {
+    body { padding: 10px; font-size: 13px; }
+    .winner-name { font-size: 1.3rem; }
+    .fingerprint-value { font-size: 1.15rem; letter-spacing: 0.15em; }
+    .bar-wrap { width: 50px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Distributed Loaded Dice Coordination<span class="tag">v3.1</span></h1>
+  <p>The candidate coordination tool · Offline · Open</p>
+</header>
+
+<!-- INPUT -->
+<div class="section" id="input-section">
+  <div class="section-title">Constituency data</div>
+
+  <label>Constituency number (e.g. 101)</label>
+  <input type="number" id="korzetkod" placeholder="101" min="1">
+
+  <label>Seed value <span style="color:var(--muted);font-size:0.65rem">(DAX last Monday opening value)</span></label>
+  <div style="display:flex;gap:8px;margin-top:4px;">
+    <input type="text" id="lotto" placeholder="e.g. 45124" style="flex:3">
+    <button class="btn btn-secondary" style="flex:1;margin-top:0;padding:8px 4px;font-size:0.65rem;" onclick="randomLotto()">Test</button>
+  </div>
+  <div class="algo-info" style="margin-top:8px;">
+    <strong style="color:var(--accent2)">Seed convention:</strong><br>
+    The opening value of your country's main stock index on the
+    <strong style="color:var(--text)">first trading day of the week before election day</strong>
+    (normally Monday; if that is a holiday, the next trading day).<br>
+    The value is <strong style="color:var(--text)">rounded to a whole number</strong> —
+    45123.78, 45 123,78 and 45124 all count as <code>45124</code>,
+    so small differences between published sources do not matter.<br>
+    Source: newspaper financial section · TV/radio market report · bank app.
+  </div>
+
+  <div style="margin-top:16px;">
+    <div class="section-title" style="margin-bottom:8px;">Candidates and weight</div>
+    <div class="algo-info">
+      Enter each candidate's estimated popularity in <code>%</code> — a previous
+      election result or any honest estimate. The tool snaps it to a coarse
+      logarithmic <strong style="color:var(--text)">weight bucket</strong>
+      (1 · 2 · 3 · 5 · 8 · 12 · 18 · 27 · 40 · 60), shown live next to the field.
+      The bucket is the number of "lottery tickets" in the hash draw.
+      Nearby estimates land in the same bucket, so small disagreements
+      between people do not change the result.<br>
+      <strong style="color:var(--text)">Ballot #</strong> is optional: only needed if the tool
+      reports that two names are identical after normalization. Use the candidates'
+      official position numbers on the ballot paper.
+    </div>
+
+    <div class="col-heads">
+      <span style="flex:3;">Candidate name</span>
+      <span style="flex:1.2;">Pop. %</span>
+      <span style="flex:0.9;text-align:center;">Wt.</span>
+      <span style="flex:1;">Ballot #</span>
+      <span style="width:32px;"></span>
+    </div>
+
+    <div id="candidates-list"></div>
+
+    <button class="btn add-btn" onclick="addCandidate()">+ Add candidate</button>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <button class="btn" id="calc-btn" style="margin-top:20px;" onclick="calculate()">▶ Calculate</button>
+</div>
+
+<!-- RESULT -->
+<div class="section" id="result">
+  <div class="section-title">Result</div>
+
+  <div class="winner-box">
+    <div class="winner-label">Coordinated candidate — cast your vote for:</div>
+    <div class="winner-name" id="winner-name">—</div>
+    <div class="winner-hash" id="winner-hash"></div>
+  </div>
+
+  <div class="fingerprint-box">
+    <div class="fingerprint-label">Input fingerprint — compare with others</div>
+    <div class="fingerprint-value" id="fingerprint">—</div>
+    <div class="fingerprint-note">
+      This code is computed from everything you entered (constituency, candidates,
+      weights, seed). If a friend in the same constituency gets a different code,
+      one of you mistyped something — check your inputs together <em>before</em> election day.
+    </div>
+  </div>
+
+  <table class="ranking-table" id="ranking-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Candidate</th>
+        <th>Best hash</th>
+      </tr>
+    </thead>
+    <tbody id="ranking-body"></tbody>
+  </table>
+
+  <div style="margin-top:16px;">
+    <div class="section-title">Verification</div>
+    <div class="algo-info" id="verify-info"></div>
+  </div>
+
+  <button class="btn btn-secondary" style="margin-top:8px;" onclick="reset()">← Back / New calculation</button>
+
+  <div class="disclaimer">
+    This tool is for informational purposes only. No voter is obligated to follow its
+    suggestion — this is a coordination proposal that anyone can freely verify, accept,
+    or disregard.
+  </div>
+</div>
+
+<script>
+// ─── SHA-256 (Web Crypto, no external dependency) ──────────────────────────
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBigInt(hex) {
+  return BigInt('0x' + hex);
+}
+
+// ─── HTML escaping (defence against broken/abusive candidate names) ────────
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ─── Name normalization ────────────────────────────────────────────────────
+// Goal: any reasonable spelling of the same name produces the same string,
+// identically on every device, browser and locale.
+//
+//   1. Unicode NFD decomposition + strip combining diacritics (Á→A, ő→o, ç→c)
+//   2. Explicit map for letters that do not decompose (Ł, Ø, Đ, ß, Æ, Œ, Þ…)
+//   3. Uppercase
+//   4. Strip EVERYTHING that is not A–Z or 0–9 (spaces, hyphens, apostrophes, dots)
+//
+// "Gergely Karácsony", "karacsony gergely"? No — word order is preserved,
+// only characters are normalized: "O'Brien-Smith" → "OBRIENSMITH".
+// For non-Latin scripts, the convention is: use the official Latin
+// transliteration as printed on the ballot paper.
+const CHAR_MAP = {
+  'Ł':'L','ł':'l','Đ':'D','đ':'d','Ø':'O','ø':'o',
+  'ß':'ss','ẞ':'SS','Æ':'AE','æ':'ae','Œ':'OE','œ':'oe',
+  'Þ':'TH','þ':'th','Ð':'D','ð':'d','Ŋ':'N','ŋ':'n',
+  'Ħ':'H','ħ':'h','Ŧ':'T','ŧ':'t','ı':'i','İ':'I'
+};
+
+function normalizeName(name) {
+  let s = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.split('').map(c => CHAR_MAP[c] !== undefined ? CHAR_MAP[c] : c).join('');
+  s = s.toUpperCase();
+  s = s.replace(/[^A-Z0-9]/g, '');
+  return s;
+}
+
+// ─── Deterministic ordering ────────────────────────────────────────────────
+// Plain code-point comparison on the normalized (A–Z0–9) strings.
+// NEVER use localeCompare here: its result depends on the browser's locale
+// and ICU version, which silently fragments coordination across devices.
+// Ties (identical normalized names) are broken by official ballot number.
+function compareCandidates(a, b) {
+  if (a.norm < b.norm) return -1;
+  if (a.norm > b.norm) return 1;
+  return (a.ballot || 0) - (b.ballot || 0);
+}
+
+// ─── Popularity quantization (logarithmic codebook) ────────────────────────
+// People enter their honest percentage estimate; the tool snaps it to a
+// geometric codebook. Win probability depends only on weight RATIOS, so the
+// quantization error is uniform on the relative scale (μ-law companding) —
+// and most independent estimates of the same party land in the SAME bucket,
+// which is what makes the input fingerprint comparable between people.
+//
+//   codebook: 1, 2, 3, 5, 8, 12, 18, 27, 40, 60
+//   bucket boundaries are the geometric means of neighbours, precomputed
+//   as integer thresholds so the mapping is exact on every device:
+//
+//   %:       1 | 2 | 3 | 4–6 | 7–9 | 10–14 | 15–22 | 23–32 | 33–48 | 49–100
+//   weight:  1 | 2 | 3 |  5  |  8  |  12   |  18   |  27   |  40   |  60
+//
+// Each candidate's bucket depends ONLY on their own percentage — a dispute
+// about one party never shifts anyone else's weight.
+function quantizeWeight(pct) {
+  if (pct <= 1) return 1;
+  if (pct <= 2) return 2;
+  if (pct <= 3) return 3;
+  if (pct <= 6) return 5;
+  if (pct <= 9) return 8;
+  if (pct <= 14) return 12;
+  if (pct <= 22) return 18;
+  if (pct <= 32) return 27;
+  if (pct <= 48) return 40;
+  return 60;
+}
+
+// ─── Seed canonicalization ─────────────────────────────────────────────────
+// Different sources publish the same index value with different formatting:
+// "45123.78", "45 123,78", "45,123.78", "45124". All of these must map to
+// the same canonical integer. Rule:
+//   - strip spaces and apostrophes (thousands separators)
+//   - if both '.' and ',' occur, the LAST one is the decimal separator
+//   - if only one occurs and it is followed by exactly 1–2 digits at the end,
+//     it is a decimal separator; otherwise a thousands separator
+//   - parse, then round to the nearest whole number
+// Returns null if unparseable.
+function canonicalSeed(raw) {
+  let s = raw.trim().replace(/[\s'’]/g, '');
+  if (!s) return null;
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastDot > lastComma) {
+      s = s.replace(/,/g, '');                       // 45,123.78 → 45123.78
+    } else {
+      s = s.replace(/\./g, '').replace(',', '.');    // 45.123,78 → 45123.78
+    }
+  } else if (lastComma !== -1) {
+    const frac = s.length - lastComma - 1;
+    s = (frac >= 1 && frac <= 2 && s.indexOf(',') === lastComma)
+      ? s.replace(',', '.')                          // 45123,78 → 45123.78
+      : s.replace(/,/g, '');                         // 45,123 / 1,234,567 → digits
+  } else if (lastDot !== -1) {
+    const frac = s.length - lastDot - 1;
+    if (!(frac >= 1 && frac <= 2 && s.indexOf('.') === lastDot)) {
+      s = s.replace(/\./g, '');                      // 45.123 (thousands) → 45123
+    }
+  }
+  const num = parseFloat(s);
+  if (!isFinite(num)) return null;
+  return Math.round(num);
+}
+
+// ─── Candidate UI ──────────────────────────────────────────────────────────
+let candidateCount = 0;
+
+function addCandidate(name = '', pct = '') {
+  candidateCount++;
+  const id = 'c' + candidateCount;
+  const div = document.createElement('div');
+  div.className = 'candidate-row';
+  div.id = 'row_' + id;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'name-input';
+  nameInput.id = 'name_' + id;
+  nameInput.placeholder = 'Candidate name';
+  nameInput.value = name;                 // set as property: quote-safe
+
+  const pctInput = document.createElement('input');
+  pctInput.type = 'number';
+  pctInput.className = 'pct-input';
+  pctInput.id = 'pct_' + id;
+  pctInput.placeholder = '%';
+  pctInput.min = '1';
+  pctInput.max = '100';
+  pctInput.step = '1';
+  if (pct) pctInput.value = String(pct);
+
+  const bucketSpan = document.createElement('span');
+  bucketSpan.className = 'bucket-display';
+  bucketSpan.id = 'bucket_' + id;
+
+  const updateBucket = () => {
+    const p = parseInt(pctInput.value);
+    bucketSpan.textContent = (p >= 1 && p <= 100) ? '→' + quantizeWeight(p) : '';
+  };
+  pctInput.addEventListener('input', updateBucket);
+  updateBucket();
+
+  const ballotInput = document.createElement('input');
+  ballotInput.type = 'number';
+  ballotInput.className = 'ballot-input';
+  ballotInput.id = 'ballot_' + id;
+  ballotInput.placeholder = '–';
+  ballotInput.min = '1';
+
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '×';
+  delBtn.onclick = () => removeCandidate('row_' + id);
+
+  div.append(nameInput, pctInput, bucketSpan, ballotInput, delBtn);
+  document.getElementById('candidates-list').appendChild(div);
+}
+
+function removeCandidate(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+}
+
+function getCandidates() {
+  const rows = document.querySelectorAll('.candidate-row');
+  const result = [];
+  rows.forEach(row => {
+    const idSuffix = row.id.replace('row_', '');
+    const name = document.getElementById('name_' + idSuffix).value.trim();
+    const pct = parseInt(document.getElementById('pct_' + idSuffix).value) || 0;
+    const ballotRaw = document.getElementById('ballot_' + idSuffix).value.trim();
+    const ballot = ballotRaw ? parseInt(ballotRaw) : null;
+    if (name && pct >= 1 && pct <= 100) {
+      result.push({ name, pct, weight: quantizeWeight(pct), ballot });
+    }
+  });
+  return result;
+}
+
+function randomLotto() {
+  document.getElementById('lotto').value = String(Math.floor(Math.random() * 90000) + 10000);
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.innerHTML = msg;
+  box.style.display = 'block';
+}
+
+function clearError() {
+  const box = document.getElementById('error-box');
+  box.style.display = 'none';
+  box.innerHTML = '';
+}
+
+// ─── MAIN ALGORITHM ─────────────────────────────────────────────────────────
+//
+//   winner = max over all candidates and salts of
+//            SHA-256( constituency | name_index | salt | seed )
+//   where salt ∈ [0, weight) and seed is the canonical integer.
+//
+//   Step 1: normalize names (see normalizeName) and sort by plain
+//           code-point order; ties broken by official ballot number.
+//           Assign 1-based indices in this order.
+//   Step 2: each candidate computes [weight] hashes; keep the maximum.
+//   Step 3: the candidate holding the globally largest hash wins.
+//           P(candidate wins) = weight / total_weight — exactly proportional.
+//   Step 4: display the name→index mapping, the winning input string and
+//           an input fingerprint so anyone can verify and cross-check.
+
+async function calculate() {
+  clearError();
+  const korzetkod = document.getElementById('korzetkod').value.trim();
+  const lottoRaw = document.getElementById('lotto').value;
+  const rawCandidates = getCandidates();
+
+  if (!korzetkod) { showError('Please enter the constituency number.'); return; }
+  const seed = canonicalSeed(lottoRaw);
+  if (seed === null) { showError('The seed value could not be parsed as a number.'); return; }
+  if (rawCandidates.length < 2) { showError('At least 2 candidates are required.'); return; }
+
+  // Step 1: normalize, detect collisions, sort deterministically
+  const cands = rawCandidates.map(c => ({ ...c, norm: normalizeName(c.name) }));
+
+  const empty = cands.filter(c => !c.norm);
+  if (empty.length > 0) {
+    showError('A candidate name became empty after normalization (it contains no letters or digits). Please fix it.');
+    return;
+  }
+
+  const byNorm = {};
+  cands.forEach(c => { (byNorm[c.norm] = byNorm[c.norm] || []).push(c); });
+  for (const norm in byNorm) {
+    const group = byNorm[norm];
+    if (group.length > 1) {
+      const missing = group.filter(c => c.ballot === null);
+      if (missing.length > 0) {
+        showError(
+          'Name collision: <code>' + escapeHtml(norm) + '</code> — ' +
+          group.map(c => escapeHtml(c.name)).join(', ') +
+          ' normalize to the same string.<br>' +
+          'Enter each colliding candidate\'s official <strong>ballot paper position number</strong> ' +
+          'in the Ballot # column, then calculate again.'
+        );
+        return;
+      }
+      const ballots = group.map(c => c.ballot);
+      if (new Set(ballots).size !== ballots.length) {
+        showError('Colliding candidates must have different ballot numbers.');
+        return;
+      }
+    }
+  }
+
+  const btn = document.getElementById('calc-btn');
+  btn.textContent = '⏳ Calculating...';
+  btn.disabled = true;
+
+  const sorted = [...cands].sort(compareCandidates);
+  const indexed = sorted.map((cand, i) => ({ ...cand, nameIndex: i + 1 }));
+
+  // Step 2: each candidate's best hash
+  const results = [];
+  for (const cand of indexed) {
+    let maxHash = '';
+    let maxHashBig = BigInt(-1);
+    let bestSalt = 0;
+    for (let i = 0; i < cand.weight; i++) {
+      const input = `${korzetkod}|${cand.nameIndex}|${i}|${seed}`;
+      const h = await sha256(input);
+      const hBig = hexToBigInt(h);
+      if (hBig > maxHashBig) {
+        maxHashBig = hBig;
+        maxHash = h;
+        bestSalt = i;
+      }
+    }
+    results.push({ ...cand, maxHash, maxHashBig, bestSalt });
+  }
+
+  // Step 3: winner = globally largest hash
+  results.sort((a, b) => (a.maxHashBig > b.maxHashBig ? -1 : 1));
+  const winner = results[0];
+
+  document.getElementById('winner-name').textContent = winner.name;
+  document.getElementById('winner-hash').textContent = 'Hash: ' + winner.maxHash;
+
+  // Input fingerprint: hash of the full canonical input set, first 8 hex chars.
+  // Lets two people confirm in seconds that they entered identical data.
+  const fpParts = indexed.map(c =>
+    c.norm + '=' + c.weight + (c.ballot !== null ? '#' + c.ballot : ''));
+  const fpInput = 'FP1|' + korzetkod + '|' + seed + '|' + fpParts.join('|');
+  const fingerprint = (await sha256(fpInput)).substring(0, 8).toUpperCase();
+  document.getElementById('fingerprint').textContent = fingerprint;
+
+  // Ranking table
+  const tbody = document.getElementById('ranking-body');
+  tbody.innerHTML = '';
+  const maxVal = winner.maxHashBig;
+  results.forEach((r, idx) => {
+    const ratio = Number((r.maxHashBig * BigInt(100)) / maxVal);
+    const tr = document.createElement('tr');
+    if (idx === 0) tr.className = 'winner';
+    tr.innerHTML = `
+      <td class="rank-num">${idx === 0 ? '★' : idx + 1}</td>
+      <td>
+        <div>${escapeHtml(r.name)} <span style="color:var(--muted);font-size:0.65rem;">(index: ${r.nameIndex})</span></div>
+        <div style="color:var(--muted);font-size:0.65rem;">popularity: ${r.pct}% → weight: ${r.weight} · best salt: ${r.bestSalt}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${ratio}%"></div></div>
+      </td>
+      <td class="hash-val">${r.maxHash.substring(0, 16)}…</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Step 4: verification block
+  const nameMap = [...results]
+    .sort((a, b) => a.nameIndex - b.nameIndex)
+    .map(r => r.nameIndex + '=' + escapeHtml(r.norm) + '(w' + r.weight + ')' +
+              (r.ballot !== null ? '(#' + r.ballot + ')' : ''))
+    .join(' · ');
+  const verifyInput = `${korzetkod}|${winner.nameIndex}|${winner.bestSalt}|${seed}`;
+  document.getElementById('verify-info').innerHTML = `
+    <strong style="color:var(--accent2)">Verification (anyone can check this):</strong><br><br>
+    <strong style="color:var(--text)">Name → index mapping (code-point order, ties by ballot #):</strong><br>
+    <code>${nameMap}</code><br>
+    <span style="color:var(--muted)">Weight codebook: % 1|2|3|4–6|7–9|10–14|15–22|23–32|33–48|49+ →
+    weight 1|2|3|5|8|12|18|27|40|60</span><br><br>
+    Constituency: <code>${escapeHtml(korzetkod)}</code> ·
+    Canonical seed (rounded): <code>${seed}</code><br>
+    Winner index: <code>${winner.nameIndex}</code> → <strong>${escapeHtml(winner.name)}</strong><br>
+    Winning input string: <code>${escapeHtml(verifyInput)}</code><br>
+    SHA-256: <code>${winner.maxHash}</code><br>
+    Input fingerprint: <code>${fingerprint}</code><br><br>
+    <span style="color:var(--muted)">
+    Terminal: <code>echo -n "${escapeHtml(verifyInput)}" | sha256sum</code><br>
+    The name→index mapping and the fingerprint must match for the result to be valid.
+    </span>
+  `;
+
+  btn.textContent = '▶ Calculate';
+  btn.disabled = false;
+
+  document.getElementById('input-section').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function reset() {
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('input-section').style.display = 'block';
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+addCandidate("CDU's Candidate", 17);
+addCandidate("SPD's Candidate", 9);
+addCandidate("The Greens's Candidate", 9);
+addCandidate("Left Party's Candidate", 9);
+addCandidate("BSW's Candidate", 5);
+addCandidate("FDP's Candidate", 3);
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
