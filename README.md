@@ -1,4 +1,4 @@
-# FPTP Protest Voting
+# Hybrid vote-fare to patch FPtP voting systems
 
 > *"Coordinate without a common ground, and leave the agreements to your representatives."*
 
